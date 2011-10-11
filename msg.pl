@@ -118,8 +118,7 @@ if( $update_genomes ) {
 				&system_call("bwa", "samse", "$genomes_fa{$sp}.msg", "$out.sai", $reads_for_updating_fq{$sp}, "> $out.sam") ;
 			}
 
-			&system_call("$src/filter-sam.py", "-i", "$out.sam", "-o", "$out.filtered.sam") ;
-
+			&system_call("$src/filter-sam.py", "-i", "$out.sam", "-o", "$out.filtered.sam") unless (-e "$out.filtered.sam");
 			&system_call("samtools", "view", "-bt", "$genomes{$sp}.msg.fai", "-o $out.bam", "$out.filtered.sam") ;
 			&system_call("samtools", "sort", "$out.bam", "$out.bam.sorted") ;
 			&system_call("samtools", "index", "$out.bam.sorted.bam") ;
