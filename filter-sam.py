@@ -21,24 +21,23 @@ class SamFilter(CommandLineApp):
         i = 0
         omit = 0
         for read in infile.fetch():
+            #if i > 0 and not i % 1e5: print i
             i += 1
   
             if not (read.flag in [0,4,16] and read.flag in [0,4,16]):
-                print 'read %s flag %d not in {0,4,16}: omitting' % (read.qname, read.flag)
+                print 'read %d flag %d not in {0,4,16}: omitting' % (i, read.flag)
                 continue
             if read.flag == 4: continue
         
             try:
                 one_best_match = read.opt('X0') == 1
-                no_subpoptimal_matches = False
-                try: no_subpoptimal_matches = read.opt('X1') == 0 
-                except: no_subpoptimal_matches = read.opt('XT')=='U'
+                no_subpoptimal_matches = read.opt('X1') == 0
+                indels = read.opt('XO') > 0 or read.opt('XG') > 0 
 
-                ok = one_best_match and no_subpoptimal_matches
+                ok = one_best_match and no_subpoptimal_matches ## and not indels
 
             except Exception, e: ## KeyError
-                print '%s %s' % (read.qname, e)
-                print read
+                print '%s' % e
                 ok = False
 
             if ok:

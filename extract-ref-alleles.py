@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+
 # [[file:~/Work/simsec/org/simsec.org::*Filter%20reads][block-25]]
 from Bio.Seq import Seq
 from Bio import SeqIO
@@ -47,6 +48,8 @@ class App(CommandLineApp):
 
         sim_samfilename = 'aln_' + self.options.indiv + '_par1.sam'
         sec_samfilename = 'aln_' + self.options.indiv + '_par2.sam'
+        #sim_samfilename = 'aln_' + self.options.indiv + '_par1.sam.gz'
+        #sec_samfilename = 'aln_' + self.options.indiv + '_par2.sam.gz'
         print(sim_samfilename)
         print(sim_samfilename)
 
@@ -93,7 +96,6 @@ class App(CommandLineApp):
         i = 0
         read = {}
         for (read['par1'], read['par2']) in both_samfiles:
-
             if not i % 1e5: print i
             i += 1
   
@@ -103,17 +105,16 @@ class App(CommandLineApp):
             if self.options.chroms != ['all'] and ref not in self.options.chroms: continue
 
             if not (read['par1'].flag in [0,16] and read['par2'].flag in [0,16]):
-                if self.options.verbosity: print 'read %d %s flags (parent1: %d, parent2: %d) not in {0,16}: omitting' % (i, read['par1'].qname, read['par1'].flag, read['par2'].flag)
-
+                if self.options.verbosity: print 'read %d %s flags (parent1: %d, parent2: %d) not in {0,16}: omitting' % (
+                    i, read['par1'].qname, read['par1'].flag, read['par2'].flag)
                 continue
-
             if read['par1'].flag == 4 or read['par2'].flag == 4: continue
 
             seq_forward = dict(zip(species, [Seq(read[sp].seq, IUPAC.ambiguous_dna) for sp in species]))
             if read['par2'].flag != read['par1'].flag:
                 seq_forward['par2'] = seq_forward['par2'].reverse_complement()
         
-            if str(seq_forward['par1']) != str(seq_forward['par2']):
+            if str(seq_forward[sp]) != str(seq_forward[sp]):
                 print read.qname
                 print seq_forward['par1']
                 print seq_forward['par2']
@@ -121,19 +122,19 @@ class App(CommandLineApp):
 
             try:
                 one_best_match = read['par1'].opt('X0') == 1 and read['par2'].opt('X0') == 1
-                no_suboptimal_matches = False
-                try: no_suboptimal_matches = read['par1'].opt('X1') == 0 and read['par2'].opt('X1') == 0
-                except: no_subpoptimal_matches = read['par1'].opt('XT')=='U' and read['par1'].opt('XT')=='U'
+                no_subpoptimal_matches = read['par1'].opt('X1') == 0 and read['par2'].opt('X1') == 0
                 mds_same          = read['par1'].opt('MD') == read['par2'].opt('MD')
                 cigars_same       = read['par1'].cigar == read['par2'].cigar
                 both_species_same = read['par1'].opt('NM') == 0 and read['par2'].opt('NM') == 0
                 if both_species_same: assert(mds_same and cigars_same)
-                indels            = any([read[sp].opt('XO') > 0 or read[sp].opt('XG') > 0 for sp in species])
+                indels            = any([read[sp].opt('XO') > 0 or read[sp].opt('XG') > 0 
+                                         for sp in species])
         
-                ok = one_best_match and no_suboptimal_matches
+                ok = one_best_match and no_subpoptimal_matches
+                #ok = one_best_match and no_subpoptimal_matches and not indels
+                     ## and not both_species_same
 
             except: ## KeyError
-                print 'Possible tag missing: %s %s' % (read['par1'].qname, e)
                 ok = False
 
             if ok:

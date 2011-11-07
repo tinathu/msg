@@ -16,8 +16,8 @@ $update_nthreads = 1 ; ## Number of BWA threads when updating genomes (must matc
 
 GetOptions(
 	'barcodes|b=s' => \$barcodes,
-   're_cutter=s' => \$re_cutter,
-   'linker_system=s' => \$linker_system,
+    're_cutter=s' => \$re_cutter,
+    'linker_system=s' => \$linker_system,
 	'reads|i=s' => \$raw_read_data,
 	'update|u' => \$update_genomes,
 	'parent1=s' => \$parent1_genome,
@@ -37,7 +37,10 @@ GetOptions(
 	'recRate=s' => \$recRate,
 	'rfac=s' => \$rfac,
 	'bwaindex1=s' => \$bwaindex1,
-	'bwaindex2=s' => \$bwaindex2
+	'bwaindex2=s' => \$bwaindex2,
+	'HMM=s' => \$HMM,
+	'HMM_decay=s' => \$HMM_decay,
+	'HMM_iterate=s' => \$HMM_iterate
 	) ;
 
 print "msg version:  $version\n" ;
@@ -118,7 +121,8 @@ if( $update_genomes ) {
 				&system_call("bwa", "samse", "$genomes_fa{$sp}.msg", "$out.sai", $reads_for_updating_fq{$sp}, "> $out.sam") ;
 			}
 
-			&system_call("$src/filter-sam.py", "-i", "$out.sam", "-o", "$out.filtered.sam") unless (-e "$out.filtered.sam");
+			&system_call("$src/filter-sam.py", "-i", "$out.sam", "-o", "$out.filtered.sam") ;
+
 			&system_call("samtools", "view", "-bt", "$genomes{$sp}.msg.fai", "-o $out.bam", "$out.filtered.sam") ;
 			&system_call("samtools", "sort", "$out.bam", "$out.bam.sorted") ;
 			&system_call("samtools", "index", "$out.bam.sorted.bam") ;
@@ -186,7 +190,7 @@ print "\n\nRUNNING ", join(' ',('python', "$src/parse_and_map.py", '-i', $raw_re
 if ($parse_or_map eq '--map-only') {
    print "\nFit HMM to estimate ancestry...\n";
 
-	open (BARCODE,$barcodes) || die "ERROR: Can't open $barcodes: $!\n";
+open (BARCODE,$barcodes) || die "ERROR: Can't open $barcodes: $!\n";
    foreach my $bc_line (<BARCODE>) {
 	   chomp $bc_line;
 
@@ -194,7 +198,6 @@ if ($parse_or_map eq '--map-only') {
    	my @bc_bits = split(/\s+/,$bc_line);
    	my $indiv = 'indiv' . $bc_bits[1] . '_' . $bc_bits[0];
       print "\t$indiv\n";
-   
    	&system_call('bash', "$src/parent1or2-hmm.sh",
    			 '-b', $barcodes,
    			 '-s', $samfiles_dir,
@@ -208,10 +211,14 @@ if ($parse_or_map eq '--map-only') {
    			 '-f', $deltapar1,
    			 '-g', $deltapar2,
    			 '-a', $recRate,
-   			 '-r', $rfac,
    			 '-x', $sexchroms,
-   			 '-z', $priors
+   			 '-z', $priors,
+   			 '-r', $rfac,
+   			 '-H', $HMM,
+   			 '-j', $HMM_iterate,
+   		     '-e', $HMM_decay
    		  ) ;
 
    } close BARCODE;
+
 }

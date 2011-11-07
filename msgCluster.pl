@@ -32,8 +32,11 @@ my %params = (
 	      pnathresh      => '0.03',
 	      cluster        => '1',
 	      threads        => '1',
-	      queue          => '1day'
-    );
+	      queue          => '1day',
+	      HMM 			 => 'classic',
+		  HMM_decay      => '0.8',
+		  HMM_iterate	 => 'FALSE'
+	      );
 
 open (IN,'msg.cfg') || die "ERROR: Can't open msg.cfg: $!\n";
 while (<IN>) { chomp $_;
@@ -167,7 +170,10 @@ if ($params{'cluster'} != 0) {
        ' --recRate ' . $params{'recRate'} .
        ' --rfac ' . $params{'rfac'} .
        ' --priors ' . $params{'priors'} .
-       " || exit 100\ndone\n" .
+       ' --HMM ' . $params{'HMM'} .
+	   ' --HMM_decay ' . $params{'HMM_decay'} .
+	   ' --HMM_iterate ' . $params{'HMM_iterate'} .
+	   " || exit 100\ndone\n" .
        "/bin/date\n";
 } else {
    print OUT "#!/bin/bash\n/bin/hostname\n/bin/date\n" .
@@ -185,6 +191,9 @@ if ($params{'cluster'} != 0) {
        ' --recRate ' . $params{'recRate'} .
        ' --rfac ' . $params{'rfac'} .
        ' --priors ' . $params{'priors'} .
+       ' --HMM ' . $params{'HMM'} .
+	   ' --HMM_decay ' . $params{'HMM_decay'} .
+	   ' --HMM_iterate ' . $params{'HMM_iterate'} .
        "\n";
     }
 close OUT;

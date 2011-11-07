@@ -10,6 +10,7 @@ source(sprintf("%s/ded.R", dirname(dollar0)))
 source(sprintf("%s/hmmlib.R", dirname(dollar0)))
 library("R.methodsS3", lib.loc = dirname(dollar0))
 library("R.oo", lib.loc = dirname(dollar0))
+source(sprintf("%s/srhHMM_lib.R", dirname(dollar0)))
 
 opts <- getopts()
 indivs <- unlist(strsplit(opts$i,split=","))
@@ -20,6 +21,11 @@ deltapar1 <- as.numeric(opts$p)
 deltapar2 <- as.numeric(opts$q)
 rfac <- as.numeric(opts$r)
 priors <- unlist(strsplit(opts$z,split=","))
+HMMtype <- opts$H
+HMM_seqpair <- as.numeric(opts$j)
+HMM_iterate <- opts$k
+HMM_diffthresh <- as.numeric(opts$l)
+HMM_decay <- as.numeric(opts$e)
 
 stopifnot(!is.null(indivs), !is.null(dir), !is.null(outdir), length(indivs) == 1)
 
@@ -51,6 +57,7 @@ for(indiv in indivs) {
     ## else all.contigs <- contigs
     
     dataa <- list()
+    if(HMMtype %in% c("new", "hybrid")){breakpts <- list()}
     hmmdata.file <- file.path(outdir, indiv, paste(indiv, "hmmprob.RData", sep="-"))
     if(file.exists(hmmdata.file)) {
         cat("HMM fit for indiv", indiv, "already exists\n")
@@ -195,20 +202,60 @@ for(indiv in indivs) {
             data <- cbind(data, prob)
             data$est <- apply(prob, 1, which.max)
             
-            ## Posterior probability
-            hmm <- forwardback.ded(Pi=Pi, delta=phi, prob=prob)
-            #hmm <- forwardback.ded(Pi=Pi, delta=rep(1/K, K), prob=prob)
-            Pr.z.given.y <- exp(hmm$logalpha + hmm$logbeta - hmm$LL)
-            colnames(Pr.z.given.y) <- paste("Pr(", ancestries, "|y)")
-            data <- cbind(data, Pr.z.given.y)
-            attr(data, "badpos") <- badpos
-            dataa[[contig]] <- data
+            ## Posterior probability - classic
+            if(HMMtype %in% c("classic", "hybrid")){
+           		hmm <- forwardback.ded(Pi=Pi, delta=phi, prob=prob)
+            	Pr.z.given.y <- exp(hmm$logalpha + hmm$logbeta - hmm$LL)
+           		colnames(Pr.z.given.y) <- paste("Pr(", ancestries, "|y)")
+            	data <- cbind(data, Pr.z.given.y)
+            	attr(data, "badpos") <- badpos
+            	dataa[[contig]] <- data
+             
+            	datapos <- data$pos
+            	#save(ancestries, d, p, Pi, phi, prob, HMMtype, HMM_seqpair, HMM_iterate, HMM_diffthresh, HMM_decay, indiv, indivs, contig, contigs, main.contigs, r, datapos, contigLengths, file = file.path(outdir, indiv, paste(indiv, contig, "hmmdata_msg.RData", sep="-")))
+        		}
+        	
+        	## Posterior probability - new
+        	if(HMMtype %in% c("new", "hybrid")){
+        		if(ploidy == 2){
+				zero <- matrix(c(1,6,3,4), ncol =2, byrow = TRUE)}
+				if(ploidy == 1){
+				zero <- NULL}
+			
+				#a = 0.8
+				#seqPair = 20
+				#diffThresh = 30
+				Int <- 1
+				nstates <- length(ancestries)
+			
+				if(length(prob[,1]) > 1){
+				#Run Viterbi-HMM forward and backwards and output the state sequence
+        		dual.hmm <- new.HMM_pathFR(phi, d, prob, zero, HMM_decay, r, Int)
+			
+				print(contig)
+				datapos <- data$pos
+				#save(dual.hmm, datapos, file = file.path(outdir, indiv, paste(indiv, contig, "hmmdata3SRH.RData", sep="-")))
+				
+				#Compare recombination events called by foward and reverse HMM runs and determine a consensus, likely set of recombinations
+				
+				conc.hap <- new.HMM_path.consensus(dual.hmm, contig, nstates, data$pos)
+				
+				#save(conc.hap, file = file.path(outdir, indiv, paste(indiv, contig, "hmmdata4SRH.RData", sep="-")))
+				output <- cbind(dual.hmm, conc.hap[["Ancestry"]])
+				colnames(output) <- c("F_Anc", "R_Anc", "CON_Anc")
+			
+				dataa[[contig]] <- cbind(dataa[[contig]], output)
+				breakpts[[contig]] <- conc.hap[["recoZ"]]
+				}}
         }
         cat("Saving data...")
         save(dataa, file=hmmdata.file)
         cat("OK\n")
+        
+                 
     }
     
+    if(HMMtype %in% c("classic", "hybrid")){
     contigLengths <- contigLengths[plot.contigs,]
 
     ## Track the width of breakpoints
@@ -216,7 +263,7 @@ for(indiv in indivs) {
     matchMismatch <- {}
 
     cat("Plotting...")
-    plotfile <- file.path(outdir, indiv, paste(indiv, "hmmprob.pdf", sep="-"))
+    plotfile <- file.path(outdir, indiv, paste(indiv, "hmmprob_classic.pdf", sep="-"))
     if(file.exists(plotfile)) { cat("plot already exists\n") ; next }
     pdf(file=plotfile, width=7, height=1.5)
     par(mar=c(2,2.5,0.5,0.5),bg="transparent",cex.main=.68,cex.lab=.8,font.lab=2,cex.axis=.38,mgp=c(1,.000001,0),xaxs="i")
@@ -286,5 +333,59 @@ for(indiv in indivs) {
     if (is.null(matchMismatch)==F) {
         write.table(as.data.frame(matchMismatch),file=file.path(outdir, indiv, paste(indiv, "matchMismatch.csv", sep="-")),
 						append=F,quote=F,na="NA",row.names=F,col.names=T,sep=",");
+   }
+   if(HMMtype %in% c("new", "hybrid")){
+		
+		plotfile <- file.path(outdir, indiv, paste(indiv, "hmmprob_new.pdf", sep="-"))
+    	if(file.exists(plotfile)) { cat("plot already exists\n") ; next }
+    	pdf(file=plotfile)
+    
+		observed_plot_contigs <- names(dataa)[names(dataa) %in% plot.contigs]
+		padding <- max(contigLengths[contigLengths$chr %in% plot.contigs,]$length)/(2*length(plot.contigs))
+
+		cumsum_plot <- NULL
+		for(contigl in plot.contigs){
+			cumsum_plot <- rbind(cumsum_plot, cbind(contigLengths[contigLengths$chr == contigl,2], padding))
+		}
+
+		cumsum_plot <- c(0, cumsum(unlist(t(cumsum_plot)))[((1:length(plot.contigs))*2)[-length(plot.contigs)]])
+
+		for(contigl in plot.contigs){
+
+			if(contigl %in% observed_plot_contigs){
+				par(xaxt = "n")
+				if(contigl == observed_plot_contigs[1]){
+
+					plot_pos <- dataa[[contigl]]$pos
+
+					plot(dataa[[contigl]]$"F_Anc" ~ plot_pos, lwd = 2, col = "seagreen", type = "l", main = paste("Ancestry prediction for ", indiv, sep = ""), ylim = c(0.7, length(ancestries)*2), ylab = "Ancestry", xlab = NA, xlim = c(0, sum(contigLengths[contigLengths$chr %in% plot.contigs,]$length) + padding*(length(plot.contigs)-1)))
+					lines(dataa[[contigl]]$"R_Anc" ~ plot_pos, lwd = 2, col = "lightslateblue")
+					lines(dataa[[contigl]]$"CON_Anc" ~ plot_pos, col = "orangered", lwd = 4)
+
+					text(mean(range(plot_pos)), 0.8, labels = contigl)
+					legend("topright", c("Forward HMM Ancestry", "Reverse HMM Ancestry", "Consensus Ancestry"), text.col = c("seagreen", "lightslateblue", "orangered"), bty = "n")
+				} else {
+
+					plot_pos <- dataa[[contigl]]$pos + cumsum_plot[c(1:length(plot.contigs))[contigl == plot.contigs]]
+
+					lines(dataa[[contigl]]$"F_Anc" ~ plot_pos, lwd = 2, col = "seagreen") 
+					lines(dataa[[contigl]]$"R_Anc" ~ plot_pos, lwd = 2, col = "lightslateblue")
+					lines(dataa[[contigl]]$"CON_Anc" ~ plot_pos, col = "orangered", lwd = 4)
+	
+					text(mean(range(plot_pos)), 0.8, labels = contigl)	}
+			} else {
+				plot_pos <- dataa[[contigl]]$pos + cumsum_plot[c(1:length(plot.contigs))[contigl == plot.contigs]]
+				text(mean(range(plot_pos)), 0.8, labels = contigl)	
+				}
+			}
+			dev.off()
+		
+		#Save recombination events 
+		save(breakpts, file = file.path(outdir, indiv, paste(indiv, "breakpts.R", sep="-")))
+			
+		#determine error rate
+		#need total length of reads corresponding to each contig to determine the frequency of errors in homozygous regions
+			
+		}
    }
 }
