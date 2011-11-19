@@ -32,7 +32,9 @@ my %params = (
 	      pnathresh      => '0.03',
 	      cluster        => '1',
 	      threads        => '1',
-	      queue          => '1day'
+	      queue          => '1day',
+	      samtoolsPath   => 'msg/samtools_msg',
+	      bwaPath        => 'msg/bwa_msg'
     );
 
 open (IN,'msg.cfg') || die "ERROR: Can't open msg.cfg: $!\n";
@@ -92,6 +94,9 @@ if (exists $params{'parent1_reads'}) {
 	' --parent1-reads ' . $params{'parent1_reads'} .
 	' --bwaindex1 ' . $params{'bwaindex1'} .
 	' --bwaindex2 ' . $params{'bwaindex2'} .
+	' --bwaindex2 ' . $params{'bwaindex2'} .
+	' --samtoolsPath ' . $params{'samtoolsPath'} .
+	' --bwaPath ' . $params{'bwaPath'} .
 	" || exit 100\n";
     close OUT;
     system("chmod 755 msgRun0-1.sh");
@@ -112,6 +117,8 @@ if (exists $params{'parent2_reads'}) {
 	' --parent2-reads ' . $params{'parent2_reads'} .
 	' --bwaindex1 ' . $params{'bwaindex1'} .
 	' --bwaindex2 ' . $params{'bwaindex2'} .
+	' --samtoolsPath ' . $params{'samtoolsPath'} .
+	' --bwaPath ' . $params{'bwaPath'} .
 	" || exit 100\n";
     close OUT;
     system("chmod 755 msgRun0-2.sh");
@@ -130,9 +137,11 @@ print OUT "/bin/hostname\n/bin/date\n" .
     ' --reads ' . $params{'reads'} . 
     ' --bwaindex1 ' . $params{'bwaindex1'} .
     ' --bwaindex2 ' . $params{'bwaindex2'} .
-	 ' --parent1 ' . $params{'parent1'} .
-	 ' --parent2 ' . $params{'parent2'} .
-	 " --parse_or_map parse-only || exit 100\n";
+	' --parent1 ' . $params{'parent1'} .
+	' --parent2 ' . $params{'parent2'} .
+	' --samtoolsPath ' . $params{'samtoolsPath'} .
+	' --bwaPath ' . $params{'bwaPath'} .
+	" --parse_or_map parse-only || exit 100\n";
 close OUT;
 system("chmod 755 msgRun1.sh");
 
@@ -167,6 +176,8 @@ if ($params{'cluster'} != 0) {
        ' --recRate ' . $params{'recRate'} .
        ' --rfac ' . $params{'rfac'} .
        ' --priors ' . $params{'priors'} .
+	   ' --samtoolsPath ' . $params{'samtoolsPath'} .
+	   ' --bwaPath ' . $params{'bwaPath'} .
        " || exit 100\ndone\n" .
        "/bin/date\n";
 } else {
@@ -185,6 +196,8 @@ if ($params{'cluster'} != 0) {
        ' --recRate ' . $params{'recRate'} .
        ' --rfac ' . $params{'rfac'} .
        ' --priors ' . $params{'priors'} .
+	   ' --samtoolsPath ' . $params{'samtoolsPath'} .
+	   ' --bwaPath ' . $params{'bwaPath'} .
        "\n";
     }
 close OUT;

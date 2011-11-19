@@ -12,7 +12,7 @@ die () {
 
 src=$(dirname $0)
 
-while getopts "b:s:o:R:p:q:i:c:x:y:f:g:z:a:r:h:" opt
+while getopts "b:s:o:R:p:q:i:c:x:y:f:g:z:a:r:h:S:" opt
 do 
   case $opt in
       b) barcodes=$OPTARG ;;
@@ -30,6 +30,7 @@ do
       z) priors=$OPTARG ;;
       a) recRate=$OPTARG ;;
       r) rfac=$OPTARG ;;
+      S) samtoolsPath=$OPTARG ;;
       *) usage ;;
   esac
 done
@@ -69,8 +70,8 @@ indivdir=$outdir/$indiv
 }
 
 echo "Creating pileup for $indiv"
-echo "bash $src/make-pileups.sh -i $indiv -d $indivdir -p $parent1 -q $parent2 2>&1 | grep -vF 'deleted'"
-bash $src/make-pileups.sh -i $indiv -d $indivdir -p $parent1 -q $parent2 2>&1 | grep -vF 'deleted'
+echo "bash $src/make-pileups.sh -i $indiv -d $indivdir -p $parent1 -q $parent2 -S $samtoolsPath 2>&1 | grep -vF 'deleted'"
+bash $src/make-pileups.sh -i $indiv -d $indivdir -p $parent1 -q $parent2 -S $samtoolsPath 2>&1 | grep -vF 'deleted'
 
 
 echo "Writing HMM input data for $indiv"

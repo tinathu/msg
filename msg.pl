@@ -37,7 +37,9 @@ GetOptions(
 	'recRate=s' => \$recRate,
 	'rfac=s' => \$rfac,
 	'bwaindex1=s' => \$bwaindex1,
-	'bwaindex2=s' => \$bwaindex2
+	'bwaindex2=s' => \$bwaindex2,
+	'samtoolsPath=s' => \$samtoolsPath,
+	'bwaPath=s' => \$bwaPath
 	) ;
 
 print "msg version:  $version\n" ;
@@ -109,20 +111,20 @@ if( $update_genomes ) {
 		$out = "update_reads-aligned-$sp" ;
 		unless( -e "$out.pileup" ) {
 
-			&system_call("bwa", "index", "-a", $genome_index{$sp}, "$genomes_fa{$sp}.msg") 
+			&system_call($samtoolsPath, "index", "-a", $genome_index{$sp}, "$genomes_fa{$sp}.msg") 
 				unless( -e "$genomes_fa{$sp}.msg.bwt" and -e "$genomes_fa{$sp}.msg.ann" );
-			&system_call("samtools", "faidx", "$genomes_fa{$sp}.msg") ;
+			&system_call($samtoolsPath, "faidx", "$genomes_fa{$sp}.msg") ;
 
 			unless (-e "$out.sam") {
-				&system_call("bwa", "aln", "-t", $update_nthreads, "$genomes_fa{$sp}.msg", $reads_for_updating_fq{$sp}, "> $out.sai") ;
-				&system_call("bwa", "samse", "$genomes_fa{$sp}.msg", "$out.sai", $reads_for_updating_fq{$sp}, "> $out.sam") ;
+				&system_call($bwaPath, "aln", "-t", $update_nthreads, "$genomes_fa{$sp}.msg", $reads_for_updating_fq{$sp}, "> $out.sai") ;
+				&system_call($bwaPath, "samse", "$genomes_fa{$sp}.msg", "$out.sai", $reads_for_updating_fq{$sp}, "> $out.sam") ;
 			}
 
 			&system_call("$src/filter-sam.py", "-i", "$out.sam", "-o", "$out.filtered.sam") unless (-e "$out.filtered.sam");
-			&system_call("samtools", "view", "-bt", "$genomes{$sp}.msg.fai", "-o $out.bam", "$out.filtered.sam") ;
-			&system_call("samtools", "sort", "$out.bam", "$out.bam.sorted") ;
-			&system_call("samtools", "index", "$out.bam.sorted.bam") ;
-			&system_call("samtools", "pileup", "-f", "$genomes_fa{$sp}.msg", "$out.bam.sorted.bam", "-c", "> $out.pileup") ;
+			&system_call($samtoolsPath, "view", "-bt", "$genomes{$sp}.msg.fai", "-o $out.bam", "$out.filtered.sam") ;
+			&system_call($samtoolsPath, "sort", "$out.bam", "$out.bam.sorted") ;
+			&system_call($samtoolsPath, "index", "$out.bam.sorted.bam") ;
+			&system_call($samtoolsPath, "pileup", "-f", "$genomes_fa{$sp}.msg", "$out.bam.sorted.bam", "-c", "> $out.pileup") ;
 
 		}
 
@@ -210,7 +212,8 @@ if ($parse_or_map eq '--map-only') {
    			 '-a', $recRate,
    			 '-r', $rfac,
    			 '-x', $sexchroms,
-   			 '-z', $priors
+   			 '-z', $priors,
+   			 '-S', $samtoolsPath
    		  ) ;
 
    } close BARCODE;
